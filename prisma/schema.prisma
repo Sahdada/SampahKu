@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  nama      String
+  email     String   @unique
+  password  String
+  noHp      String   @unique
+  alamat    String?
+  poin      Int      @default(0)
+  role      String   @default("nasabah")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  laporan   LaporanSampah[] @relation("UserLaporan")
+  laporanAdmin LaporanSampah[] @relation("AdminLaporan")
+  transaksi Transaksi[]
+  notifikasi Notifikasi[]
+  transaksiPenukaran TransaksiPenukaran[]
+  verifikasi VerifikasiLaporan[]  // ✅ TAMBAHKAN INI
+}
+
+model JenisSampah {
+  id          String   @id @default(uuid())
+  namaJenis   String   @unique
+  kategori    String
+  hargaPerKg  Int
+  satuan      String   @default("kg")
+  deskripsi   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  laporan     LaporanSampah[]
+}
+
+model Wilayah {
+  id          String   @id @default(uuid())
+  namaWilayah String   @unique
+  kodePos     String?
+  deskripsi   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  laporan     LaporanSampah[]
+}
+
+model LaporanSampah {
+  id             String   @id @default(uuid())
+  berat          Float
+  tanggalLapor   DateTime @default(now())
+  catatan        String?
+  
+  userId         String
+  adminId        String?
+  jenisSampahId  String
+  wilayahId      String
+  
+  status         String   @default("pending")
+  
+  user           User     @relation("UserLaporan", fields: [userId], references: [id], onDelete: Cascade)
+  admin          User?    @relation("AdminLaporan", fields: [adminId], references: [id], onDelete: SetNull)
+  jenisSampah    JenisSampah @relation(fields: [jenisSampahId], references: [id], onDelete: Restrict)
+  wilayah        Wilayah  @relation(fields: [wilayahId], references: [id], onDelete: Restrict)
+  
+  foto           FotoSampah?
+  transaksi      Transaksi?
+  verifikasi     VerifikasiLaporan[]  // ✅ TAMBAHKAN INI
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model FotoSampah {
+  id         String   @id @default(uuid())
+  imageUrl   String
+  deskripsi  String?
+  ukuranFile String?
+  formatFile String?
+  createdAt  DateTime @default(now())
+
+  laporanId  String?  @unique
+  laporan    LaporanSampah? @relation(fields: [laporanId], references: [id])
+}
+
+model Transaksi {
+  id             String   @id @default(uuid())
+  kodeTransaksi  String   @unique
+  tipeTransaksi  String
+  
+  laporanId      String   @unique
+  adminId        String
+  
+  hargaJual      Int      @default(0)
+  poinDitukar    Int      @default(0)
+  
+  status         String   @default("selesai")
+  keterangan     String?
+  tanggalTransaksi DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  laporan        LaporanSampah @relation(fields: [laporanId], references: [id], onDelete: Restrict)
+  admin          User          @relation(fields: [adminId], references: [id], onDelete: Restrict)
+}
+
+model Notifikasi {
+  id         String   @id @default(uuid())
+  userId     String
+  judul      String
+  pesan      String
+  isRead     Boolean  @default(false)
+  tipe       String   @default("info")
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TransaksiPenukaran {
+  id             String   @id @default(uuid())
+  kodeTransaksi  String   @unique
+  userId         String
+  poinDigunakan  Int
+  hadiah         String
+  status         String   @default("sukses")
+  tanggalTransaksi DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ✅ TAMBAHKAN MODEL INI
+model VerifikasiLaporan {
+  id             String   @id @default(uuid())
+  laporanId      String
+  adminId        String
+  status         String   @default("pending")
+  catatan        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  laporan        LaporanSampah @relation(fields: [laporanId], references: [id], onDelete: Cascade)
+  admin          User          @relation(fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@unique([laporanId, adminId])
+}
